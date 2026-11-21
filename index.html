@@ -295,7 +295,7 @@ function home(){
  <button class="mode" id="mL"><span class="ic">${IC.spk}</span><span><b>Poslech</b><span>Uslyšíš větu a vybereš, co znamená.</span></span></button>
  <button class="mode" id="mS"><span class="ic">${IC.mic}</span><span><b>Výslovnost</b><span>Řekneš větu nahlas a uvidíš, čemu bylo rozumět.</span></span></button>
  <button class="mode" id="mV"><span class="ic">${IC.pen}</span><span><b>Slovíčka</b><span>Napíšeš anglické slovo sama – z „poznám ho“ se stane „umím ho“. Rozkvetlo ${bloomed()} z ${V.length}.</span></span></button>
- <button class="mode" id="mC"><span class="ic">${IC.chat}</span><span><b>Rozhovor v kuchyni</b><span>Na návštěvu přijde Emma z Anglie. Vaříš a odpovídáš jí nahlas celou větou.</span></span></button>
+ <button class="mode" id="mC"><span class="ic">${IC.chat}</span><span><b>Rozhovory s Emmou</b><span>Kamarádka z Anglie se vyptává na vaření, rodinu, zahradu, knížky a televizi. Odpovídáš nahlas celou větou.</span></span></button>
  ${s.n?`<p class="small">Zatím procvičeno ${s.n} vět, ve ${s.days.length} ${s.days.length===1?'dni':'dnech'}.</p>`:''}`;
  document.getElementById('mL').onclick=startListen;
  document.getElementById('mS').onclick=startSay;
@@ -558,11 +558,20 @@ function checkVoc(){
 }
 function nextVoc(){if(Q.queue.length)showVoc();else finish('voc')}
 
-/* ---------- ROZHOVOR V KUCHYNI ----------
+/* ---------- ROZHOVORY S EMMOU ----------
+   Každá scéna: id, title, intro (česky), turns.
    Každý krok: q = Emmina otázka (2 varianty), cz = překlad, task = co má mamka říct,
-   start = začátek odpovědi (nápověda), need = co musí odpověď obsahovat, min = min. počet slov. */
+   start = začátek odpovědi (nápověda), need = co musí odpověď obsahovat (všechna pravidla),
+   min = min. počet slov (jinak 3), cap = co si Emma zapamatuje, re = Emmina reakce. */
 const FOOD=/\b(meat|beef|pork|chicken|onions?|potato(es)?|flour|eggs?|milk|butter|salt|pepper|garlic|paprika|tomato(es)?|carrots?|sugar|water|cheese|cream|rice|pasta|noodles|bread|oil|vegetables?|mushrooms?|cabbage|apples?|plums?|lemons?|caraway|cumin|herbs|spices|sausages?|fish|beans|peas|stock|yeast|jam|nuts|poppy seeds|dumplings|ham|bacon|lard|vinegar|parsley|celery)\b/;
-const CHAT=[
+const FAM=/\b(daughters?|sons?|husband|grandsons?|granddaughters?|grandchildren|sisters?|brothers?|mother|father|mum|mom|dad|nieces?|nephews?|cousins?|friends?|family|children|kids|grandma|grandmother|grandfather|grandpa|aunt|uncle|wife|dogs?)\b/;
+const PLANT=/\b(tomato(es)?|potato(es)?|carrots?|onions?|garlic|beans|peas|cucumbers?|peppers?|lettuce|salad|cabbage|strawberr(y|ies)|raspberr(y|ies)|apples?|pears?|plums?|cherr(y|ies)|herbs|parsley|dill|flowers?|roses?|tulips?|vegetables?|fruit|trees?|pumpkins?|courgettes?|zucchini|currants?|gooseberr(y|ies)|grapes?|apricots?|peaches|beetroot|radish(es)?|leeks?|celery)\b/;
+const TVW=/\b(news|films?|movies?|series|serials?|soaps?|documentar(y|ies)|cooking|quiz(zes)?|shows?|programmes?|programs?|sports?|football|hockey|tennis|skiing|weather|comed(y|ies)|crime|detectives?|history|nature|animals?|music|concerts?|fairy tales?|competitions?)\b/;
+const FREQ=/\b(every|often|sometimes|always|never|usually|once|twice|week|weekend|weekends|month|day|days|morning|evening|sunday|saturday|monday|tuesday|wednesday|thursday|friday|times|daily)\b/;
+const capWord=r=>s=>{const m=s.match(r);return m?m[0]:null};
+const BYE=/\b(welcome|glad|pleasure|thank|thanks|happy|enjoy|bye|goodbye|see you|soon|yes|sure|ok|okay|course|good)\b/;
+const SCENES=[
+ {id:'kitchen',title:'V kuchyni',sub:'Vaříš a Emma se vyptává.',intro:'Přišla za tebou kamarádka <b>Emma z Anglie</b>. Ty zrovna vaříš a ona se vyptává.',turns:[
  {q:["Hello! Something smells delicious. What are you cooking?","Hi! Mmm, what are you cooking today?"],cz:"Ahoj! Něco krásně voní. Co vaříš?",
   task:"Řekni, co vaříš.",start:"I'm cooking … / I'm making …",need:[/\b(cooking|making|baking|preparing|frying)\b \w+/],
   cap:s=>{const m=s.match(/\b(?:cooking|making|baking|preparing|frying) (?:a |an |some |the )?(.+)$/);return m&&m[1].split(' ').length<=4?m[1]:null},
@@ -585,21 +594,116 @@ const CHAT=[
   need:[/\b(favourite|favorite|love|like|best)\b/],re:()=>"Yummy!"},
  {q:["This is delicious! Thank you for dinner.","Mmm, it was wonderful. Thank you!"],cz:"To je výborné! Děkuju za večeři.",task:"Odpověz na poděkování.",start:"You're welcome … / I'm glad …",min:2,
   need:[/\b(welcome|glad|pleasure|thank|thanks|happy|enjoy)\b/],re:()=>"See you next time. Bye!"}
+]},
+ {id:'family',title:'Rodina',sub:'Emma si prohlíží tvoje rodinné fotky.',intro:'Emma si u tebe prohlíží <b>rodinné fotky</b> a vyptává se na tvou rodinu.',turns:[
+  {q:["Oh, what a nice photo! Who is this?","Who is this in the photo?"],cz:"Ta je hezká fotka! Kdo je to?",task:"Řekni, kdo je na fotce (dcera, syn, vnuk…).",start:"This is my … / It's my …",
+   need:[FAM],cap:capWord(FAM),re:c=>c?`Your ${c}? How lovely!`:"How lovely!"},
+  {q:["How many children do you have?","Do you have any children?"],cz:"Kolik máš dětí? / Máš děti?",task:"Řekni, kolik máš dětí.",start:"I have … / I've got …",
+   need:[/\b(have|got|has)\b/,/\b(no|one|two|three|four|five|six|child|children|daughters?|sons?|\d+)\b/],re:()=>"That's nice."},
+  {q:["Where does your family live?","Does your family live near you?"],cz:"Kde bydlí tvoje rodina? / Bydlí tvoje rodina blízko tebe?",task:"Řekni, kde bydlí tvoje rodina.",start:"My daughter lives in … / They live …",
+   need:[/\b(live|lives|living|near|far|close)\b/],re:()=>"I see."},
+  {q:["How often do you see them?","Do you see them often?"],cz:"Jak často se vídáte?",task:"Řekni, jak často se vídáte.",start:"Every week … / On Sundays …",
+   need:[FREQ],re:()=>"That's good."},
+  {q:["Do you have any grandchildren?","Have you got any grandchildren?"],cz:"Máš vnoučata?",task:"Odpověz, jestli máš vnoučata.",start:"Yes, I have … / No, I don't …",
+   need:[/\b(yes|no|not|have|got|grandchildren|grandchild|grandsons?|granddaughters?)\b/],re:()=>"Oh, I see."},
+  {q:["What do you like doing together?","What do you do together?"],cz:"Co spolu rádi děláte?",task:"Řekni, co spolu rádi děláte.",start:"We like … / We go …",
+   need:[/\b(we|together|us)\b/],re:()=>"That sounds lovely."},
+  {q:["Is your family big or small?","Do you have a big family?"],cz:"Je tvoje rodina velká, nebo malá?",task:"Řekni, jestli je tvoje rodina velká, nebo malá.",start:"My family is …",
+   need:[/\b(big|small|large|little)\b/],re:()=>"Mine is small too."},
+  {q:["Do you have any pets?","Have you got any animals?"],cz:"Máš nějaká zvířata?",task:"Řekni, jestli máš zvířata (psy, kočku…).",start:"I have … / I've got …",
+   need:[/\b(have|got|no|not)\b/],re:(c,s)=>/\bdogs?\b/.test(s)?"Oh, I love dogs!":"Nice."},
+  {q:["What did you do last Christmas with your family?","How did you spend Christmas with your family?"],cz:"Co jste dělali loni o Vánocích?",task:"Řekni, co jste dělali o Vánocích (minulý čas).",start:"We … / I cooked …",
+   need:[/\b(we|i)\b/],re:()=>"That sounds wonderful!"},
+  {q:["Thank you for showing me the photos!","Thanks for the photos. Your family is lovely!"],cz:"Děkuju, žes mi ukázala fotky!",task:"Odpověz na poděkování.",start:"You're welcome … / Thank you …",min:2,
+   need:[BYE],re:()=>"Bye for now!"}
+ ]},
+ {id:'garden',title:'Na zahradě',sub:'Emma obdivuje, co pěstuješ.',intro:'Emma tě navštívila <b>na zahradě</b> a chce vědět všechno o tom, co pěstuješ.',turns:[
+  {q:["What a beautiful garden! What do you grow here?","Wow, your garden is lovely! What do you grow?"],cz:"Ta je krásná zahrada! Co tady pěstuješ?",task:"Řekni, co pěstuješ.",start:"I grow … / I have …",
+   need:[/\b(grow|have|plant|got)\b/,PLANT],cap:capWord(PLANT),re:c=>c?`Mmm, ${c}! Lovely.`:"Lovely!"},
+  {q:["Do you work in the garden every day?","How often do you work in the garden?"],cz:"Pracuješ na zahradě každý den? / Jak často?",task:"Řekni, jak často pracuješ na zahradě.",start:"Every day … / Almost every day … / On weekends …",
+   need:[FREQ],re:()=>"That's a lot of work!"},
+  {q:["What do you do with all the fruit?","What do you do with your harvest?"],cz:"Co děláš s tím ovocem? / Co děláš s úrodou?",task:"Řekni, co děláš s úrodou (zavařuješ, pečeš, dáváš rodině…).",start:"I make jam … / I give it to …",
+   need:[/\b(make|cook|bake|eat|give|freeze|sell|keep|use|preserve|jam|juice|cakes?|pies?|compote|store|dry)\b/],re:()=>"Delicious!"},
+  {q:["What is the weather like today?","Is the weather good today?"],cz:"Jaké je dnes počasí?",task:"Řekni, jaké je dnes počasí.",start:"It's sunny … / It's cold …",
+   need:[/\b(sunny|cold|warm|hot|rain|raining|rainy|windy|cloudy|nice|lovely|beautiful|snow|snowing|grey|gray|foggy|cool|wet|dry|terrible|bad|good)\b/],re:()=>"Perfect for gardening!"},
+  {q:["When do you plant tomatoes?","When is the best time to plant tomatoes?"],cz:"Kdy sázíš rajčata?",task:"Řekni, kdy sázíš rajčata.",start:"In May … / In spring …",
+   need:[/\b(january|february|march|april|may|june|july|august|september|october|november|december|spring|summer|autumn|fall|winter|after|before|when)\b/],re:()=>"I always plant them too early!"},
+  {q:["Do you have problems with snails?","Are there many snails in your garden?"],cz:"Máš problém se slimáky?",task:"Řekni, jestli máš problém se slimáky.",start:"Yes, I have … / No, …",
+   need:[/\b(yes|no|not|snails?|slugs?|problems?|many|lot)\b/],re:()=>"Oh, those snails!"},
+  {q:["Do you like working in the garden? Why?","Why do you like your garden?"],cz:"Baví tě práce na zahradě? Proč?",task:"Řekni, jestli tě zahrada baví a proč.",start:"Yes, I like it because … / I love …",
+   need:[/\b(like|love|enjoy|hate|relax|relaxing|because|nice|good|quiet|fresh|outside)\b/],re:()=>"I understand."},
+  {q:["Can I take some flowers home?","Could I have some flowers, please?"],cz:"Můžu si vzít domů pár kytek?",task:"Odpověz: ano, samozřejmě – nebo ne, promiň.",start:"Yes, of course … / Sorry, …",min:2,
+   need:[/\b(yes|course|sure|no|sorry|take|please|okay|ok)\b/],re:()=>"Thank you so much!"},
+  {q:["Thank you for the tour. I love your garden!","Thanks, it was lovely to see your garden!"],cz:"Děkuju za prohlídku, tvoje zahrada je skvělá!",task:"Odpověz na poděkování.",start:"You're welcome … / Thank you …",min:2,
+   need:[BYE],re:()=>"Bye!"}
+ ]},
+ {id:'books',title:'Knížky',sub:'Co čteš a co máš ráda.',intro:'Sedíte s Emmou u kafe a povídáte si <b>o knížkách</b>.',turns:[
+  {q:["What are you reading at the moment?","What book are you reading now?"],cz:"Co teď čteš?",task:"Řekni, co teď čteš.",start:"I'm reading … / I'm not reading …",
+   need:[/\b(reading|read|books?|novel|magazines?|newspapers?|nothing)\b/],re:()=>"Oh, interesting!"},
+  {q:["What is it about?","Tell me, what is the story about?"],cz:"O čem to je?",task:"Řekni, o čem to je.",start:"It's about …",
+   need:[/\b(about|story|is|it)\b/],re:()=>"That sounds good."},
+  {q:["Do you like it?","Is it good?"],cz:"Líbí se ti? / Je to dobré?",task:"Řekni, jestli se ti to líbí a proč.",start:"Yes, I like it because … / No, it's boring.",
+   need:[/\b(yes|no|like|love|enjoy|boring|good|great|interesting|beautiful|nice|bad|funny|sad|exciting)\b/],re:()=>"I see."},
+  {q:["What kind of books do you like?","What books do you like best?"],cz:"Jaké knížky máš ráda?",task:"Řekni, jaké knížky máš ráda (detektivky, romány, kuchařky…).",start:"I like … / I love …",
+   need:[/\b(like|love|enjoy|read|prefer)\b/,/\b(crime|detectives?|novels?|romance|romantic|history|historical|cookbooks?|cookery|cooking|books|stories|poems?|poetry|biograph(y|ies)|fantasy|thrillers?|myster(y|ies)|travel|science|magazines?|classics|fairy|love)\b/],re:()=>"Me too!"},
+  {q:["Who is your favourite writer?","Do you have a favourite author?"],cz:"Kdo je tvůj oblíbený spisovatel?",task:"Řekni svého oblíbeného spisovatele nebo spisovatelku.",start:"My favourite writer is … / I like …",
+   need:[/\b(favourite|favorite|like|love|is|writer|author)\b/],re:()=>"I must read something by them!"},
+  {q:["When do you read? In the evening?","Do you read in the morning or in the evening?"],cz:"Kdy čteš? Večer?",task:"Řekni, kdy čteš.",start:"I read in the evening … / before bed …",
+   need:[/\b(evening|morning|night|afternoon|bed|bedtime|day|weekend|always|every|lunch|breakfast|holiday)\b/],re:()=>"Me too."},
+  {q:["Do you read on paper or on a tablet?","Do you prefer paper books or a tablet?"],cz:"Čteš na papíře, nebo na tabletu?",task:"Řekni, jestli čteš papírové knížky, nebo na tabletu.",start:"I read … / I prefer …",
+   need:[/\b(paper|tablet|phone|kindle|reader|books?|computer|prefer|both|listen|audiobooks?)\b/],re:()=>"Paper books smell so nice!"},
+  {q:["Can you recommend a good book?","What book should I read?"],cz:"Můžeš mi doporučit dobrou knížku?",task:"Doporuč Emmě knížku.",start:"Yes, read … / I recommend …",
+   need:[/\b(read|recommend|try|yes|book|is|good|should)\b/],re:()=>"Thank you, I'll try it!"},
+  {q:["Thanks! Let's talk about books again soon.","It was nice to talk about books. See you soon!"],cz:"Díky! Zase si brzy popovídáme o knížkách.",task:"Rozluč se.",start:"Yes, … / See you …",min:2,
+   need:[BYE],re:()=>"Bye!"}
+ ]},
+ {id:'tv',title:'Televize',sub:'Na co se díváš a co tě baví.',intro:'Večer s Emmou – povídáte si o tom, <b>na co se díváte v televizi</b>.',turns:[
+  {q:["What do you like watching on TV?","What do you usually watch on TV?"],cz:"Na co se ráda díváš v televizi?",task:"Řekni, na co se ráda díváš.",start:"I like watching … / I watch …",
+   need:[/\b(watch|watching|like|love|enjoy)\b/,TVW],cap:capWord(TVW),re:c=>c?`Oh, I like ${c} too!`:"Oh, nice!"},
+  {q:["How many hours a day do you watch TV?","Do you watch TV a lot?"],cz:"Kolik hodin denně se díváš na televizi?",task:"Řekni, kolik hodin denně se díváš.",start:"About two hours … / Not much …",
+   need:[/\b(hours?|minutes?|not|much|little|one|two|three|four|five|six|half|every|evening|all|lot)\b/],re:()=>"That's not too much."},
+  {q:["What did you watch yesterday?","Did you watch anything yesterday?"],cz:"Na co ses díval(a) včera?",task:"Řekni, na co ses dívala včera (minulý čas).",start:"Yesterday I watched … / I didn't watch …",
+   need:[/\b(watched|saw|did not|nothing|was|yes|no)\b/],re:()=>"Was it good?"},
+  {q:["And was it good?","Did you like it?"],cz:"A bylo to dobré? / Líbilo se ti to?",task:"Řekni, jestli to bylo dobré.",start:"Yes, it was … / No, it wasn't …",
+   need:[/\b(yes|no|was|good|great|boring|bad|funny|sad|ok|okay|interesting|excellent|nice|terrible|liked|like)\b/],re:()=>"I see."},
+  {q:["Do you watch the news every day?","Do you watch the news?"],cz:"Díváš se každý den na zprávy?",task:"Řekni, jestli sleduješ zprávy.",start:"Yes, I watch … / No, I don't …",
+   need:[/\b(yes|no|watch|news|every|sometimes|not|never|always|often)\b/],re:()=>"I watch the news every evening."},
+  {q:["Who is your favourite actor or actress?","Do you have a favourite actor?"],cz:"Kdo je tvůj oblíbený herec nebo herečka?",task:"Řekni oblíbeného herce nebo herečku.",start:"My favourite actor is … / I like …",
+   need:[/\b(favourite|favorite|like|love|is|actor|actress)\b/],re:()=>"Good choice!"},
+  {q:["Do you prefer films or series?","What do you like more, films or series?"],cz:"Máš radši filmy, nebo seriály?",task:"Řekni, jestli máš radši filmy, nebo seriály.",start:"I prefer … / I like … more",
+   need:[/\b(prefer|like|love|better|more|films?|movies?|series|both)\b/],re:()=>"Me too."},
+  {q:["What do you watch at Christmas?","Do you watch anything special at Christmas?"],cz:"Na co se díváš o Vánocích?",task:"Řekni, na co se díváš o Vánocích.",start:"We watch fairy tales … / I watch …",
+   need:[/\b(watch|watching|fairy|tales?|films?|movies?|we|always)\b/],re:(c,s)=>/\bfairy\b/.test(s)?"Fairy tales at Christmas? What a lovely tradition!":"What a lovely tradition!"},
+  {q:["Let's watch something together next time!","Next time we can watch a film together!"],cz:"Příště se můžeme na něco podívat spolu!",task:"Odpověz, že souhlasíš.",start:"Yes, good idea … / Okay, …",min:2,
+   need:[/\b(yes|good|idea|great|okay|ok|sure|course|let|love|like|why not)\b/],re:()=>"Great. See you soon!"}
+ ]}
 ];
 let C={};
+const chatBest=()=>{try{return JSON.parse(localStorage.getItem('pam-chat'))||{}}catch(e){return{}}};
 function startChat(){
  stopMic();
- app.innerHTML=`<div class="top"><span>Rozhovor v kuchyni</span><button id="homeB">Domů</button></div>
- <h2>Návštěva v kuchyni</h2>
- <p>Přišla za tebou kamarádka <b>Emma z Anglie</b>. Ty zrovna vaříš a ona se vyptává. Poslouchej, co říká, a odpovídej <b>nahlas celou větou</b> – stačí jednoduchá.</p>
+ const best=chatBest();
+ app.innerHTML=`<div class="top"><span>Rozhovory s Emmou</span><button id="homeB">Domů</button></div>
+ <h2>O čem si dnes s Emmou popovídáš?</h2>
+ <p class="small">Emma je kamarádka z Anglie. Poslouchej, co říká, a odpovídej nahlas celou větou.</p>
+ <div class="opts">${SCENES.map((sc,i)=>`<button class="opt" data-c="${i}"><b>${esc(sc.title)}</b><br><span class="small">${esc(sc.sub)}${best[sc.id]!=null?` · nejlíp ${best[sc.id]} z ${sc.turns.length}`:''}</span></button>`).join('')}</div>`;
+ bindHome();
+ app.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>introChat(+b.dataset.c));
+}
+function introChat(k){
+ const sc=SCENES[k];
+ app.innerHTML=`<div class="top"><span>Rozhovor · ${esc(sc.title)}</span><button id="homeB">Domů</button></div>
+ <h2>${esc(sc.title)}</h2>
+ <p>${sc.intro} Poslouchej, co říká, a odpovídej <b>nahlas celou větou</b> – stačí jednoduchá.</p>
  <p class="small">Emmin text je schovaný – nejdřív poslouchej. Když nerozumíš, můžeš si ho ukázat. Za odpověď „yes“ nebo jedno slovo ti Emma nepoděkuje.</p>
  <p class="small">K čemu to je: přesně takhle vypadá skutečný rozhovor – slyšíš otázku a musíš sama vymyslet odpověď. To ti Duolingo nedá.</p>
  <button class="prim" id="go">Začít rozhovor</button>`;
  bindHome();
- document.getElementById('go').onclick=()=>{C={i:0,log:[],clean:0,dish:null};onHeard=chatHeard;chatTurn('')};
+ document.getElementById('go').onclick=()=>beginChat(k);
 }
+function beginChat(k){C={k,T:SCENES[k].turns,i:0,log:[],clean:0,cap:null};onHeard=chatHeard;chatTurn('')}
 function chatTurn(prefix){
- const t=CHAT[C.i];
+ const t=C.T[C.i];
  C.q=(prefix?prefix+' ':'')+t.q[Math.random()*t.q.length|0];
  C.shown=false;C.help=false;C.fails=0;
  C.log.push({who:'em',text:C.q,hidden:true});
@@ -607,8 +711,8 @@ function chatTurn(prefix){
  speak(C.q,false);
 }
 function renderChat(){
- const t=CHAT[C.i];
- app.innerHTML=`${topBar(`Rozhovor · ${C.i+1}. otázka z ${CHAT.length}`,C.i,CHAT.length)}
+ const t=C.T[C.i];
+ app.innerHTML=`${topBar(`${esc(SCENES[C.k].title)} · ${C.i+1}. otázka z ${C.T.length}`,C.i,C.T.length)}
  <div class="chat">${C.log.slice(-4).map(m=>`<div class="bub ${m.who}"><span class="who">${m.who==='em'?'Emma':'Ty'}</span>${
    m.hidden&&!C.shown?'<span class="hid">Emma mluví… poslouchej</span>':`<span lang="en">${esc(m.text)}</span>`}</div>`).join('')}</div>
  <div class="row"><button id="play" style="text-align:center">Znovu</button><button class="slow" id="slowB">Pomalu</button></div>
@@ -639,7 +743,7 @@ function chatCheck(t,a){
  return {ok:t.need.every(r=>r.test(s)),s};
 }
 function chatHeard(alts){
- const t=CHAT[C.i],fb=document.getElementById('fb');if(!fb)return;
+ const t=C.T[C.i],fb=document.getElementById('fb');if(!fb)return;
  alts=alts.map(a=>a.trim()).filter(Boolean);
  if(!alts.length){fb.innerHTML='<div class="msg info">Nic jsem neslyšel. Klepni na mikrofon a mluv o něco hlasitěji.</div>';return}
  let res=null,said=alts[0];
@@ -652,21 +756,25 @@ function chatHeard(alts){
   return;
  }
  if(!C.shown&&!C.help)C.clean++;
- if(C.i===0&&t.cap)C.dish=t.cap(res.s);
+ if(t.cap)C.cap=t.cap(res.s);
  C.log[C.log.length-1].hidden=false;
  C.log.push({who:'me',text:said.charAt(0).toUpperCase()+said.slice(1)});
- const reaction=t.re(C.dish,res.s);
+ const reaction=t.re(C.cap,res.s);
  C.i++;
- if(C.i<CHAT.length){C.shown=false;chatTurn(reaction)}
+ if(C.i<C.T.length){C.shown=false;chatTurn(reaction)}
  else{
-  C.log.push({who:'em',text:reaction});speak(reaction,false);save(CHAT.length);
-  app.innerHTML=`<div class="top"><span>Rozhovor · hotovo</span><button id="homeB">Domů</button></div>
+  const sc=SCENES[C.k],n=C.T.length;
+  C.log.push({who:'em',text:reaction});speak(reaction,false);save(n);
+  try{const b=chatBest();b[sc.id]=Math.max(b[sc.id]||0,C.clean);localStorage.setItem('pam-chat',JSON.stringify(b))}catch(e){}
+  app.innerHTML=`<div class="top"><span>${esc(sc.title)} · hotovo</span><button id="homeB">Domů</button></div>
   <div class="chat">${C.log.slice(-3).map(m=>`<div class="bub ${m.who}"><span class="who">${m.who==='em'?'Emma':'Ty'}</span><span lang="en">${esc(m.text)}</span></div>`).join('')}</div>
-  <div class="score">${C.clean} z ${CHAT.length}</div>
+  <div class="score">${C.clean} z ${n}</div>
   <p style="text-align:center">otázkám jsi rozuměla a odpověděla bez nápovědy.</p>
-  <p class="lead" style="text-align:center">${C.clean>=8?'Celý rozhovor v angličtině! To je skutečná konverzace.':C.clean>=4?'Dobrá práce – rozhovor jsi zvládla až do konce.':'Zvládla jsi celý rozhovor. Příště zkus méně nápověd.'}</p>
-  <div class="stack"><button class="prim" id="again">Ještě jednou (Emma se zeptá trochu jinak)</button></div>`;
-  bindHome();document.getElementById('again').onclick=()=>{C={i:0,log:[],clean:0,dish:null};onHeard=chatHeard;chatTurn('')};
+  <p class="lead" style="text-align:center">${C.clean>=n-2?'Celý rozhovor v angličtině! To je skutečná konverzace.':C.clean>=n/2?'Dobrá práce – rozhovor jsi zvládla až do konce.':'Zvládla jsi celý rozhovor. Příště zkus méně nápověd.'}</p>
+  <div class="stack"><button class="prim" id="again">Ještě jednou (Emma se zeptá trochu jinak)</button><button id="other" style="text-align:center">Jiný rozhovor</button></div>`;
+  bindHome();
+  document.getElementById('again').onclick=()=>beginChat(C.k);
+  document.getElementById('other').onclick=startChat;
  }
 }
 
